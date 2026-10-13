@@ -5,7 +5,6 @@ import com.smarika.heartbeat.scheduler.ScheduleCalculator;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Value;
-
 import java.time.Instant;
 import java.util.UUID;
 
@@ -13,9 +12,7 @@ import java.util.UUID;
 public class CheckService {
 
     private final CheckRepository checkRepository;
-
     private final ScheduleCalculator scheduleCalculator;
-
     private final TokenService tokenService;
     private final String publicBaseUrl;
 
@@ -89,22 +86,20 @@ public class CheckService {
             pingUrl = publicBaseUrl + "/api/ping/" + rawToken;
         }
 
-
         return new CreateCheckResponse(
-                check.getId(),
-                check.getName(),
-                check.getType(),
-                check.getStatus(),
-                check.getScheduleType(),
-                check.getScheduleExpression(),
-                check.getGracePeriodSeconds(),
-                check.getTargetUrl(),
-                pingUrl,
-                check.getAlertUrl(),
-                check.getNextExpectedAt()
+            check.getId(),
+            check.getName(),
+            check.getType(),
+            check.getStatus(),
+            check.getScheduleType(),
+            check.getScheduleExpression(),
+            check.getGracePeriodSeconds(),
+            check.getTargetUrl(),
+            pingUrl,
+            check.getAlertUrl(),
+            check.getNextExpectedAt()
         );
     }
-
 
     private void validateRequest(CreateCheckRequest request) {
         if (
@@ -113,7 +108,7 @@ public class CheckService {
             !request.targetUrl().isBlank()) {
 
             throw new IllegalArgumentException(
-                    "Heartbeat check cannot have targetUrl"
+                "Heartbeat check cannot have targetUrl"
             );
         }
 
@@ -122,7 +117,7 @@ public class CheckService {
             request.targetUrl().isBlank()
             )) {
             throw new IllegalArgumentException(
-                    "Website check requires targetUrl"
+                "Website check requires targetUrl"
             );
         }
     }

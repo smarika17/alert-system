@@ -14,11 +14,9 @@ public class PingController {
         this.pingService = pingService;
     }
 
-
     @PostMapping("/{token}")
     public PingResponse ping(
-            @PathVariable String token
-    ) {
+        @PathVariable String token){
 
         return pingService.processPing(token);
     }

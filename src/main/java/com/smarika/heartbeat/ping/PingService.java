@@ -50,47 +50,36 @@ public class PingService {
 
 
     @Transactional
-    public PingResponse processPing(
-            String rawToken
-    ) {
+    public PingResponse processPing( String rawToken) {
 
-        String hash =
-                tokenService.hashToken(rawToken);
+        String hash = tokenService.hashToken(rawToken);
 
-        Check check =
-                checkRepository
-                        .findByPingTokenHashForUpdate(hash)
-                        .orElseThrow(() ->
-                                new IllegalArgumentException(
-                                        "Invalid ping token"
-                                )
-                        );
-
+        Check check = checkRepository
+            .findByPingTokenHashForUpdate(hash)
+            .orElseThrow(() ->
+                new IllegalArgumentException(
+                        "Invalid ping token"
+                )
+            );
 
         if (check.getStatus() == CheckStatus.PAUSED) {
-
             throw new IllegalStateException(
-                    "Check is paused"
+                "Check is paused"
             );
         }
 
-
         Instant now = Instant.now();
 
-        CheckStatus oldStatus =
-                check.getStatus();
-
-
+        CheckStatus oldStatus = check.getStatus();
         check.setLastSeenAt(now);
 
         check.setNextExpectedAt(
-                scheduleCalculator.next(
-                        check.getScheduleType(),
-                        check.getScheduleExpression(),
-                        now
-                )
+            scheduleCalculator.next(
+                check.getScheduleType(),
+                check.getScheduleExpression(),
+                now
+            )
         );
-
 
         check.setNextActionAt(check.getNextExpectedAt());
         check.setStatus(CheckStatus.UP);
@@ -99,13 +88,12 @@ public class PingService {
 
         checkRepository.save(check);
 
-
         saveHistory(
-                check,
-                HistoryEventType.PING,
-                CheckStatus.UP,
-                now,
-                "{\"message\":\"Heartbeat received\"}"
+            check,
+            HistoryEventType.PING,
+            CheckStatus.UP,
+            now,
+            "{\"message\":\"Heartbeat received\"}"
         );
 
 
