@@ -1,4 +1,68 @@
 let allChecks = [];
+let selectedJobId = null;
+
+document.getElementById("registerJobForm").addEventListener("submit", async event => {
+    event.preventDefault();
+    const button = document.getElementById("registerJobButton");
+    button.disabled = true;
+    try {
+        const response = await fetch("/api/checks", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                name: document.getElementById("jobName").value,
+                type: "HEARTBEAT",
+                scheduleType: "INTERVAL",
+                scheduleExpression: document.getElementById("jobInterval").value,
+                gracePeriodSeconds: Number(document.getElementById("jobGrace").value),
+                runAutomatically: true
+            })
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || "Registration failed");
+        selectedJobId = result.id;
+        document.getElementById("privatePingUrl").value = result.pingUrl;
+        document.getElementById("jobRegistration").hidden = false;
+        document.getElementById("jobMessage").textContent = `Registered ${result.name}. Its first run is scheduled for ${formatDate(result.nextExpectedAt)}.`;
+        await loadDashboard();
+    } catch (error) {
+        document.getElementById("jobMessage").textContent = error.message;
+    } finally {
+        button.disabled = false;
+    }
+});
+
+async function setJobMode(id, mode) {
+    try {
+        const response = await fetch(`/api/checks/${id}/job/mode`, {
+            method: "POST", headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({mode})
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || "Could not change job mode");
+        selectedJobId = id;
+        document.getElementById("jobMessage").textContent = mode === "FAILURE"
+            ? "The next runs will fail and skip their heartbeats. DOWN follows the heartbeat deadline plus grace."
+            : "The next run will write its report and send a heartbeat. A DOWN job will recover.";
+        await loadDashboard();
+    } catch (error) {
+        document.getElementById("jobMessage").textContent = error.message;
+    }
+}
+
+async function loadJobDetails() {
+    if (!selectedJobId) return;
+    const response = await fetch(`/api/checks/${selectedJobId}/job`);
+    if (!response.ok) return;
+    const job = await response.json();
+    document.getElementById("jobDetails").textContent =
+        `Job: ${job.checkId}\nMode: ${job.mode}\nNext run: ${formatDate(job.nextRunAt)}` +
+        `\nLast outcome: ${job.lastOutcome || "Waiting for first run"}` +
+        `\nHeartbeat delivered: ${job.heartbeatDelivered === null ? "-" : job.heartbeatDelivered}` +
+        `\nSuccessful runs: ${job.successfulRuns} | Failed runs: ${job.failedRuns}` +
+        (job.reportPath ? `\nReport: ${job.reportPath}` : "") +
+        (job.lastError ? `\nError: ${job.lastError}` : "");
+}
 
 
 /* =========================
@@ -38,6 +102,8 @@ async function loadDashboard() {
         populateHistorySelect();
 
         await loadAlerts();
+        await loadJobDetails();
+        if (document.getElementById("historyCheck").value) await loadHistory();
 
 
         setConnection(true);
@@ -240,6 +306,11 @@ function renderChecks(
                         History
                     </button>
 
+                    ${check.runAutomatically ? `
+                    <button class="view-button" onclick="setJobMode('${check.id}', 'FAILURE')">Failure</button>
+                    <button class="view-button" onclick="setJobMode('${check.id}', 'SUCCESS')">Success</button>
+                    ` : ""}
+
                 </td>
             `;
 
@@ -289,6 +360,8 @@ function populateHistorySelect() {
             "historyCheck"
         );
 
+    const previousSelection = select.value;
+
 
     select.innerHTML = `
         <option value="">
@@ -319,6 +392,7 @@ function populateHistorySelect() {
             );
         }
     );
+    if (allChecks.some(check => check.id === previousSelection)) select.value = previousSelection;
 }
 
 

@@ -25,6 +25,8 @@ public record CreateCheckResponse(
 
         String alertUrl,
 
-        Instant nextExpectedAt
+        Instant nextExpectedAt,
+
+        boolean runAutomatically
 ) {
 }

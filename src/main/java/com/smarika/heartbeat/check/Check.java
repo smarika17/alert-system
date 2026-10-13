@@ -49,6 +49,9 @@ public class Check {
     // Internal next action; distinct from the externally visible expected time.
     private Instant nextActionAt;
 
+    @Column(nullable = false)
+    private boolean runAutomatically;
+
     private Instant pausedAt;
 
     // Scheduled time of the first failed website probe in the current episode.
@@ -62,6 +65,14 @@ public class Check {
 
     public UUID getId() {
         return id;
+    }
+
+    public boolean isRunAutomatically() {
+        return runAutomatically;
+    }
+
+    public void setRunAutomatically(boolean runAutomatically) {
+        this.runAutomatically = runAutomatically;
     }
 
     public void setId(UUID id) {

@@ -21,7 +21,17 @@ public record CreateCheckRequest(
 
         String targetUrl,
 
-        @NotBlank
-        String alertUrl
+        String alertUrl,
+
+        Boolean runAutomatically
 ) {
+    public CreateCheckRequest {
+        runAutomatically = Boolean.TRUE.equals(runAutomatically);
+    }
+
+    public CreateCheckRequest(String name, CheckType type, ScheduleType scheduleType,
+                              String scheduleExpression, long gracePeriodSeconds,
+                              String targetUrl, String alertUrl) {
+        this(name, type, scheduleType, scheduleExpression, gracePeriodSeconds, targetUrl, alertUrl, false);
+    }
 }

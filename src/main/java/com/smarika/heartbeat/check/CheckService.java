@@ -1,6 +1,7 @@
 package com.smarika.heartbeat.check;
 
 import com.smarika.heartbeat.common.TokenService;
+import com.smarika.heartbeat.job.JobStateService;
 import com.smarika.heartbeat.scheduler.ScheduleCalculator;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
@@ -15,16 +16,19 @@ public class CheckService {
     private final ScheduleCalculator scheduleCalculator;
     private final TokenService tokenService;
     private final String publicBaseUrl;
+    private final JobStateService jobs;
 
     public CheckService(
             CheckRepository checkRepository,
             ScheduleCalculator scheduleCalculator,
             TokenService tokenService,
+            JobStateService jobs,
             @Value("${monitoring.public-base-url:http://localhost:8080}") String publicBaseUrl
     ) {
         this.checkRepository = checkRepository;
         this.scheduleCalculator = scheduleCalculator;
         this.tokenService = tokenService;
+        this.jobs = jobs;
         this.publicBaseUrl = publicBaseUrl.replaceAll("/+$", "");
     }
 
@@ -48,8 +52,10 @@ public class CheckService {
         check.setGracePeriodSeconds(
             request.gracePeriodSeconds()
         );
+        check.setRunAutomatically(request.runAutomatically());
 
-        check.setAlertUrl(request.alertUrl());
+        check.setAlertUrl(request.alertUrl() == null || request.alertUrl().isBlank()
+                ? publicBaseUrl + "/api/alerts/receive" : request.alertUrl());
         check.setCreatedAt(now);
         check.setUpdatedAt(now);
 
@@ -86,6 +92,10 @@ public class CheckService {
             pingUrl = publicBaseUrl + "/api/ping/" + rawToken;
         }
 
+        if (request.runAutomatically()) {
+            jobs.register(check, pingUrl);
+        }
+
         return new CreateCheckResponse(
             check.getId(),
             check.getName(),
@@ -97,11 +107,15 @@ public class CheckService {
             check.getTargetUrl(),
             pingUrl,
             check.getAlertUrl(),
-            check.getNextExpectedAt()
+            check.getNextExpectedAt(),
+            check.isRunAutomatically()
         );
     }
 
     private void validateRequest(CreateCheckRequest request) {
+        if (request.runAutomatically() && request.type() != CheckType.HEARTBEAT) {
+            throw new IllegalArgumentException("Only heartbeat checks can run an internal job");
+        }
         if (
             request.type() == CheckType.HEARTBEAT &&
             request.targetUrl() != null &&

@@ -95,7 +95,8 @@ public class CheckQueryService {
                 check.getLastSeenAt(),
                 check.getNextExpectedAt(),
                 check.getPausedAt(),
-                check.getCreatedAt()
+                check.getCreatedAt(),
+                check.isRunAutomatically()
         );
     }
 
@@ -118,7 +119,8 @@ public class CheckQueryService {
                 check.getNextExpectedAt(),
                 check.getPausedAt(),
                 check.getCreatedAt(),
-                check.getUpdatedAt()
+                check.getUpdatedAt(),
+                check.isRunAutomatically()
         );
     }
 }

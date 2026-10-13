@@ -58,6 +58,24 @@
     </header>
 
 
+    <section class="panel">
+        <h2>Register a Java job</h2>
+        <p>The job writes a report on its schedule and sends its private heartbeat after success.</p>
+        <form id="registerJobForm" class="job-form">
+            <label>Name <input id="jobName" required value="scheduled-report"></label>
+            <label>Run every (seconds) <input id="jobInterval" type="number" min="1" required value="10"></label>
+            <label>Grace period (seconds) <input id="jobGrace" type="number" min="0" required value="5"></label>
+            <button id="registerJobButton" type="submit">Register job</button>
+        </form>
+        <p id="jobMessage" role="status"></p>
+        <div id="jobRegistration" hidden>
+            <label for="privatePingUrl">Private heartbeat URL — keep it secret</label>
+            <input id="privatePingUrl" readonly>
+            <p>The job uses this URL automatically. Use the Failure and Success buttons below to control its next runs.</p>
+        </div>
+        <pre id="jobDetails" aria-live="polite"></pre>
+    </section>
+
     <!-- STATISTICS -->
 
     <section class="stats">

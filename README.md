@@ -12,7 +12,7 @@ docker compose ps
 ./mvnw spring-boot:run
 ```
 
-PostgreSQL 16 runs on `localhost:5432`; the development database/user/password are `heartbeat1`. Flyway applies V1 and the additive V2 migration on application startup, and the API listens on port `8080`. The checked-in configuration is for local development; change the database credentials before using it outside a local machine.
+PostgreSQL 16 runs on `localhost:5432`; the development database/user/password are `heartbeat1`. Flyway applies V1, V2, and the additive V3 internal-job migration on application startup, and the API listens on port `8080`. The checked-in configuration is for local development; change the database credentials before using it outside a local machine.
 
 To inspect the database:
 
@@ -22,7 +22,47 @@ docker exec -it heartbeat-postgres psql -U heartbeat1 -d heartbeat1
 
 In `psql`, use `\dt` to list tables. To remove the local database and **all its data**, run `docker compose down -v`.
 
-## Create and ping a heartbeat
+## Run a Java job end to end
+
+Start PostgreSQL and the application normally, then open `http://localhost:8080/`. No script, external job command, or special profile is required.
+
+1. Use **Register a Java job**. Keep the interval at 10 seconds and grace at 5 seconds. Registration displays the private URL, which the job retains automatically.
+2. Wait about 10 seconds. `Sweeper` dispatches the job. `ReportJob.execute()` reads the database and writes `job-reports/<CHECK_ID>.txt`, then `Sweeper.runJob()` makes a real POST to the private URL. The dashboard shows run counters, the report path, and heartbeat delivery. The check stays UP and `lastSeenAt` updates.
+3. Click **Failure**. Subsequent runs throw an exception before writing the report and send no heartbeat. The existing `MonitoringService` changes the check to LATE at its expected deadline, then DOWN after grace. Allow about 16 seconds from the last successful heartbeat for DOWN detection.
+4. **Recent Alerts** shows a DOWN alert. The default local HTTP webhook at `/api/alerts/receive` logs receipt, and delivery becomes DELIVERED after another few seconds. This delivers to the local application; it does not send email or SMS.
+5. Click **Success**. The next scheduled run writes its report and POSTs the private URL. `PingService` restores UP, closes the outage, and generates one RECOVERY alert.
+
+The statement specifies heartbeat behavior but no business task. Report generation is the built-in Java task, and `ReportJob.execute()` is where another actual task can be implemented. Failure mode intentionally throws; real database/file errors follow the same no-heartbeat path. Mode changes apply to the next claimed execution.
+
+The equivalent API commands:
+
+```bash
+curl -X POST http://localhost:8080/api/checks \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"scheduled-report","type":"HEARTBEAT","scheduleType":"INTERVAL","scheduleExpression":"10","gracePeriodSeconds":5,"runAutomatically":true}'
+
+# Use the id returned above as <CHECK_ID>.
+curl http://localhost:8080/api/checks/<CHECK_ID>/job
+curl http://localhost:8080/api/checks/<CHECK_ID>
+
+curl -X POST http://localhost:8080/api/checks/<CHECK_ID>/job/mode \
+  -H 'Content-Type: application/json' -d '{"mode":"FAILURE"}'
+
+# After the last heartbeat's deadline plus grace:
+curl http://localhost:8080/api/alerts
+curl http://localhost:8080/api/checks/<CHECK_ID>/history
+
+curl -X POST http://localhost:8080/api/checks/<CHECK_ID>/job/mode \
+  -H 'Content-Type: application/json' -d '{"mode":"SUCCESS"}'
+```
+
+Leave `alertUrl` out to use the local receiver, or supply your own webhook. You do not need to copy the private URL into settings. Flyway applies the additive V3 migration automatically; do not edit the existing V1/V2 migrations or delete the database.
+
+The execution schedule remains active when monitoring is DOWN, permitting recovery. Pause stops future executions and expectations; resume schedules from resume time. PostgreSQL retains the next-run deadline, selected mode, counters, and last outcome across restarts. Each successful run replaces the report file. `monitoring.job-report-directory` defaults to `./job-reports`. `PUBLIC_BASE_URL` must be reachable from the application itself for callbacks.
+
+Checks store token hashes. The internal job acts as a heartbeat client and additionally retains its private URL in `scheduled_jobs.ping_url` to resume after restart. This URL is stored in plaintext in that table and excluded from job status, lists, history, and application log messages. Internal jobs use a separate bounded worker pool and assume a single application instance; multi-instance execution requires a lease covering the entire run.
+
+## Create and ping a passive heartbeat
 
 Create a heartbeat check; the response includes the private `pingUrl`. Keep it secret and use the returned value exactly as provided:
 
@@ -39,13 +79,13 @@ curl -i -X POST http://localhost:8080/api/checks \
   }'
 ```
 
-**Important:** creating the check does not automatically send heartbeats. For this local demonstration, **you must manually POST the returned private ping URL after a successful simulated job run**. For a real job, put this POST at the *successful end* of its shell script/worker. Do not use the public check UUID. The monitor does not ping itself.
+Omitting `runAutomatically` (or setting it to false) creates a passive check: its job must POST the private URL after successful work. Use `"runAutomatically": true` for the main application's Java job to execute and send the callback automatically. Do not use the public check UUID as a ping credential.
 
 ```bash
 curl -i -X POST 'http://localhost:8080/api/ping/<PRIVATE_TOKEN>'
 ```
 
-The `pingUrl` response is a complete URL. Set `PUBLIC_BASE_URL` when deploying behind a different origin. The database stores a hash of a randomly generated 256-bit token. A check ID is not a valid ping credential. The server records its own arrival time.
+The `pingUrl` response is a complete URL. Set `PUBLIC_BASE_URL` when deploying behind a different origin. Checks store a hash of a randomly generated 256-bit token; internal jobs also retain their callback credential as described above. A check ID is not a valid ping credential. The server records its own arrival time.
 
 ## Website check
 
@@ -75,7 +115,7 @@ Run with a one-second sweeper interval:
 ./mvnw spring-boot:run -Dspring-boot.run.arguments=--monitoring.sweeper-delay-ms=1000
 ```
 
-Register an interval heartbeat with `"scheduleExpression": "10"` and `"gracePeriodSeconds": 5`, then do not ping it. Check status after its next expected time to see `LATE`; after the grace deadline it becomes `DOWN`. The one-second sweeper cadence is needed to observe the short late window. **Do not send a heartbeat ping** during this demonstration; to observe recovery, POST the original private URL *after* DOWN. The default sweeper period is ten seconds. There is no simulated clock or time-acceleration feature.
+Register an interval heartbeat with `"scheduleExpression": "10"` and `"gracePeriodSeconds": 5`, then do not ping it. Check status after its next expected time to see `LATE`; after the grace deadline it becomes `DOWN`. The one-second sweeper cadence is needed to observe the short late window. **Do not send a heartbeat ping** during this demonstration; to observe recovery, POST the original private URL *after* DOWN. The default sweeper period is one second. There is no simulated clock or time-acceleration feature.
 
 ## API
 
@@ -84,6 +124,9 @@ All paths are relative to `http://localhost:8080`. Pagination uses Spring's `pag
 | Method and path | Purpose | Example |
 |---|---|---|
 | `POST /api/checks` | Register heartbeat or website check; response includes its ID and (for heartbeats) private ping URL. | See the create examples above. |
+| `GET /api/checks/{id}/job` | Inspect internal execution and report results. | Requires `runAutomatically: true`. |
+| `POST /api/checks/{id}/job/mode` | Control subsequent Java job runs. | Body: `{"mode":"FAILURE"}` or `{"mode":"SUCCESS"}`. |
+| `POST /api/alerts/receive` | Default local HTTP webhook receiver. | Used when registration omits `alertUrl`. |
 | `POST /api/ping/{token}` | Record heartbeat using the returned private token. | `curl -i -X POST http://localhost:8080/api/ping/<PRIVATE_TOKEN>` |
 | `GET /api/checks` | List checks. | `curl -i 'http://localhost:8080/api/checks?page=0&size=20'` |
 | `GET /api/checks?status=DOWN` | Filter checks by `UP`, `LATE`, `DOWN` or `PAUSED`. | `curl -i 'http://localhost:8080/api/checks?status=DOWN&page=0&size=20'` |
@@ -93,7 +136,7 @@ All paths are relative to `http://localhost:8080`. Pagination uses Spring's `pag
 | `POST /api/checks/{id}/resume` | Resume monitoring. | `curl -i -X POST http://localhost:8080/api/checks/<CHECK_ID>/resume` |
 | `GET /api/alerts` | Inspect alert deliveries, including failed terminal alerts. | `curl -i 'http://localhost:8080/api/alerts?page=0&size=20'` |
 
-Create request fields are `name`, `type`, `scheduleType`, `scheduleExpression`, `gracePeriodSeconds`, `alertUrl`, and `targetUrl` for website checks. `type` is `HEARTBEAT` or `WEBSITE`; `scheduleType` is `INTERVAL` (seconds in `scheduleExpression`) or Spring cron `CRON`. Creation and ping both return JSON with HTTP `200`; list/detail/history use HTTP `200`; pause and resume return `200` with an empty body. Request validation and missing IDs currently return HTTP `400` with fields `timestamp`, `status`, `error`, and `message`. The `pingUrl` is an absolute URL (`PUBLIC_BASE_URL` can override the local default). Example create response excerpt:
+Create request fields are `name`, `type`, `scheduleType`, `scheduleExpression`, `gracePeriodSeconds`, optional `alertUrl` (defaults to the local receiver), optional `runAutomatically` (defaults to false), and `targetUrl` for website checks. `type` is `HEARTBEAT` or `WEBSITE`; `scheduleType` is `INTERVAL` (seconds in `scheduleExpression`) or Spring cron `CRON`. Creation and ping both return JSON with HTTP `200`; list/detail/history use HTTP `200`; pause and resume return `200` with an empty body. Request validation and missing IDs currently return HTTP `400` with fields `timestamp`, `status`, `error`, and `message`. The `pingUrl` is an absolute URL (`PUBLIC_BASE_URL` can override the local default). Example create response excerpt:
 
 ```json
 {"id":"<CHECK_UUID>","type":"HEARTBEAT","status":"UP","pingUrl":"http://localhost:8080/api/ping/<PRIVATE_TOKEN>","nextExpectedAt":"<UTC_TIMESTAMP>"}
@@ -119,7 +162,7 @@ Tests use a real PostgreSQL 16 Testcontainers database (not H2). Docker must be 
 ./mvnw test
 ```
 
-The real-PostgreSQL suite covers repeated sweeps and recovery, concurrent ping/sweep locking, late versus down, Friday-to-Monday cron, dead versus fast alert destinations, website timeouts, website grace and recovery, stale website results, manual-only heartbeats, and pause/resume across outages. Tests fail rather than silently skip when Docker is missing.
+The real-PostgreSQL suite covers repeated sweeps and recovery, concurrent ping/sweep locking, late versus down, Friday-to-Monday cron, dead versus fast alert destinations, website timeouts, website grace and recovery, stale website results, passive heartbeats, pause/resume across outages, and real HTTP internal-job success/failure/recovery with report writing and local webhook delivery. Tests fail rather than silently skip when Docker is missing.
 
 ## Implementation notes
 

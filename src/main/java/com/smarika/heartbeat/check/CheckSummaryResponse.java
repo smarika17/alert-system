@@ -27,6 +27,8 @@ public record CheckSummaryResponse(
 
         Instant pausedAt,
 
-        Instant createdAt
+        Instant createdAt,
+
+        boolean runAutomatically
 ) {
 }

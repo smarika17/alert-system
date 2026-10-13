@@ -6,9 +6,9 @@ import com.smarika.heartbeat.history.HistoryEventType;
 import com.smarika.heartbeat.scheduler.ScheduleCalculator;
 import com.smarika.heartbeat.outage.Outage;
 import com.smarika.heartbeat.outage.OutageRepository;
+import com.smarika.heartbeat.job.JobStateService;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
-
 import java.time.Instant;
 import java.util.UUID;
 
@@ -21,13 +21,15 @@ public class CheckLifecycleService {
 
     private final ScheduleCalculator scheduleCalculator;
     private final OutageRepository outageRepository;
+    private final JobStateService jobs;
 
 
     public CheckLifecycleService(
             CheckRepository checkRepository,
             CheckHistoryRepository historyRepository,
             ScheduleCalculator scheduleCalculator,
-            OutageRepository outageRepository
+            OutageRepository outageRepository,
+            JobStateService jobs
     ) {
 
         this.checkRepository =
@@ -39,13 +41,12 @@ public class CheckLifecycleService {
         this.scheduleCalculator =
                 scheduleCalculator;
         this.outageRepository = outageRepository;
+        this.jobs = jobs;
     }
 
 
     @Transactional
-    public void pause(
-            UUID id
-    ) {
+    public void pause(UUID id) {
 
         Check check =
                 checkRepository
@@ -87,6 +88,7 @@ public class CheckLifecycleService {
 
         check.setNextExpectedAt(null);
         check.setNextActionAt(null);
+        jobs.pause(id);
 
         check.setUpdatedAt(now);
 
@@ -145,6 +147,7 @@ public class CheckLifecycleService {
         );
 
         check.setNextActionAt(check.getNextExpectedAt());
+        jobs.resume(check);
         check.setUpdatedAt(now);
 
         checkRepository.save(check);

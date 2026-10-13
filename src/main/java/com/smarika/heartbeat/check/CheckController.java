@@ -1,6 +1,10 @@
 package com.smarika.heartbeat.check;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
+import com.smarika.heartbeat.job.JobMode;
+import com.smarika.heartbeat.job.JobResponse;
+import com.smarika.heartbeat.job.JobStateService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
@@ -13,17 +17,32 @@ public class CheckController {
     private final CheckService checkService;
     private final CheckQueryService queryService;
     private final CheckLifecycleService lifecycleService;
+    private final JobStateService jobs;
 
-    public CheckController(CheckService checkService, CheckQueryService queryService, CheckLifecycleService lifecycleService) {
+    public CheckController(CheckService checkService, CheckQueryService queryService,
+       CheckLifecycleService lifecycleService, JobStateService jobs) {
         this.checkService = checkService;
         this.queryService = queryService;
         this.lifecycleService = lifecycleService;
+        this.jobs = jobs;
     }
 
     @PostMapping
     public CreateCheckResponse create(@Valid @RequestBody CreateCheckRequest request) {
         return checkService.createCheck(request);
     }
+
+    @GetMapping("/{id}/job")
+    public JobResponse job(@PathVariable UUID id) {
+        return jobs.get(id);
+    }
+
+    @PostMapping("/{id}/job/mode")
+    public JobResponse setJobMode(@PathVariable UUID id, @Valid @RequestBody JobModeRequest request) {
+        return jobs.setMode(id, request.mode());
+    }
+
+    public record JobModeRequest(@NotNull JobMode mode) {}
 
     @GetMapping
     public Page<CheckSummaryResponse> list(

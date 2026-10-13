@@ -31,6 +31,8 @@ public record CheckDetailResponse(
 
         Instant createdAt,
 
-        Instant updatedAt
+        Instant updatedAt,
+
+        boolean runAutomatically
 ) {
 }

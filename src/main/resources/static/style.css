@@ -2,6 +2,20 @@
     box-sizing: border-box;
 }
 
+.job-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: 16px;
+}
+
+.job-form label { display: grid; gap: 6px; }
+.job-form input, #privatePingUrl { padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; }
+.job-form button { padding: 10px 18px; border: 0; border-radius: 6px; background: #2563eb; color: white; cursor: pointer; }
+.job-form button:disabled { opacity: 0.6; cursor: wait; }
+#privatePingUrl { display: block; width: 100%; margin-top: 8px; }
+#jobDetails { white-space: pre-wrap; overflow-wrap: anywhere; }
+
 
 body {
 
