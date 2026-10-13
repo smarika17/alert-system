@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Heartbeat Monitor</title>
+
+    <link
+            rel="stylesheet"
+            href="/style.css"
+    >
+
+</head>
+
+
+<body>
+
+<div class="container">
+
+
+    <header class="header">
+
+        <div>
+
+            <h1>
+                Heartbeat Monitor
+            </h1>
+
+            <p>
+                Background job and website monitoring
+            </p>
+
+        </div>
+
+
+        <div class="connection">
+
+            <span id="connectionStatus">
+                ● Connecting...
+            </span>
+
+            <button
+                    onclick="loadDashboard()"
+            >
+                Refresh
+            </button>
+
+        </div>
+
+    </header>
+
+
+    <!-- STATISTICS -->
+
+    <section class="stats">
+
+        <div class="stat-card">
+
+            <span>
+                Total Checks
+            </span>
+
+            <strong id="totalChecks">
+                0
+            </strong>
+
+        </div>
+
+
+        <div class="stat-card up">
+
+            <span>
+                UP
+            </span>
+
+            <strong id="upChecks">
+                0
+            </strong>
+
+        </div>
+
+
+        <div class="stat-card late">
+
+            <span>
+                LATE
+            </span>
+
+            <strong id="lateChecks">
+                0
+            </strong>
+
+        </div>
+
+
+        <div class="stat-card down">
+
+            <span>
+                DOWN
+            </span>
+
+            <strong id="downChecks">
+                0
+            </strong>
+
+        </div>
+
+
+        <div class="stat-card paused">
+
+            <span>
+                PAUSED
+            </span>
+
+            <strong id="pausedChecks">
+                0
+            </strong>
+
+        </div>
+
+    </section>
+
+
+    <!-- CHECKS -->
+
+    <section class="panel">
+
+        <div class="panel-header">
+
+            <h2>
+                Checks
+            </h2>
+
+            <input
+                    id="searchInput"
+                    type="text"
+                    placeholder="Search checks..."
+                    oninput="filterChecks()"
+            >
+
+        </div>
+
+
+        <div class="table-wrapper">
+
+            <table>
+
+                <thead>
+
+                <tr>
+
+                    <th>Name</th>
+
+                    <th>Type</th>
+
+                    <th>Status</th>
+
+                    <th>Last Seen</th>
+
+                    <th>Next Expected</th>
+
+                    <th>Action</th>
+
+                </tr>
+
+                </thead>
+
+
+                <tbody id="checksTable">
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </section>
+
+
+    <!-- ALERTS -->
+
+    <section class="panel">
+
+        <div class="panel-header">
+
+            <h2>
+                Recent Alerts
+            </h2>
+
+        </div>
+
+
+        <div id="alertsContainer">
+
+            <p class="empty">
+                No alerts found.
+            </p>
+
+        </div>
+
+    </section>
+
+
+    <!-- HISTORY -->
+
+    <section class="panel">
+
+        <div class="panel-header">
+
+            <h2>
+                Check History
+            </h2>
+
+
+            <select
+                    id="historyCheck"
+                    onchange="loadHistory()"
+            >
+
+                <option value="">
+                    Select a check
+                </option>
+
+            </select>
+
+        </div>
+
+
+        <div id="historyContainer">
+
+            <p class="empty">
+
+                Select a check to see history.
+
+            </p>
+
+        </div>
+
+    </section>
+
+
+</div>
+
+
+<script src="/app.js"></script>
+
+</body>
+
+</html>

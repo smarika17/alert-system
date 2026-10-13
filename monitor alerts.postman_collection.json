@@ -1,0 +1,102 @@
+{
+	"info": {
+		"_postman_id": "3329b80a-f043-4209-9683-74db88ae5bfc",
+		"name": "monitor alerts",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "32230742"
+	},
+	"item": [
+		{
+			"name": "create checks heartbeat",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"hourly-backup\",\n  \"type\": \"HEARTBEAT\",\n  \"scheduleType\": \"INTERVAL\",\n  \"scheduleExpression\": \"60\",\n  \"gracePeriodSeconds\": 10,\n  \"alertUrl\": \"http://localhost:9999/alert\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/api/checks",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"checks"
+					]
+				},
+				"description": "Generated from cURL: curl -X POST http://localhost:8080/api/checks \\\n-H \"Content-Type: application/json\" \\\n-d '{\n  \"name\": \"nightly-backup\",\n  \"type\": \"HEARTBEAT\",\n  \"scheduleType\": \"INTERVAL\",\n  \"scheduleExpression\": \"60\",\n  \"gracePeriodSeconds\": 10,\n  \"alertUrl\": \"http://localhost:9999/alert\"\n}'"
+			},
+			"response": []
+		},
+		{
+			"name": "create checks website",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"local-test-site-2\",\n  \"type\": \"WEBSITE\",\n  \"scheduleType\": \"INTERVAL\",\n  \"scheduleExpression\": \"20\",\n  \"gracePeriodSeconds\": 0,\n  \"targetUrl\": \"http://localhost:8081\",\n  \"alertUrl\": \"http://localhost:9999/alert\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/api/checks",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"checks"
+					]
+				},
+				"description": "Generated from cURL: curl -X POST http://localhost:8080/api/checks \\\n-H \"Content-Type: application/json\" \\\n-d '{\n  \"name\": \"local-test-site\",\n  \"type\": \"WEBSITE\",\n  \"scheduleType\": \"INTERVAL\",\n  \"scheduleExpression\": \"20\",\n  \"gracePeriodSeconds\": 0,\n  \"targetUrl\": \"http://localhost:8081\",\n  \"alertUrl\": \"http://localhost:9999/alert\"\n}'"
+			},
+			"response": []
+		},
+		{
+			"name": "ping heartbeat manually",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8080/api/ping/282b02fcbc6efc1eec32f582d4c137e3bdb9f8551ee33362482a4b7fddc7310a",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"ping",
+						"282b02fcbc6efc1eec32f582d4c137e3bdb9f8551ee33362482a4b7fddc7310a"
+					]
+				},
+				"description": "Generated from cURL: curl -X POST http://localhost:8080/api/ping/282b02fcbc6efc1eec32f582d4c137e3bdb9f8551ee33362482a4b7fddc7310a"
+			},
+			"response": []
+		}
+	]
+}

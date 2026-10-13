@@ -1,0 +1,22 @@
+services:
+
+  postgres:
+    image: postgres:16
+
+    container_name: heartbeat-postgres
+
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: heartbeat1
+      POSTGRES_USER: heartbeat1
+      POSTGRES_PASSWORD: heartbeat1
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - heartbeat_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  heartbeat_postgres_data:
