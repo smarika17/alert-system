@@ -1,7 +1,7 @@
 let allChecks = [];
 let selectedJobId = null;
 
-document.getElementById("registerJobForm").addEventListener("submit", async event => {
+document.getElementById("registerJobForm")?.addEventListener("submit", async event => {
     event.preventDefault();
     const button = document.getElementById("registerJobButton");
     button.disabled = true;
@@ -41,17 +41,20 @@ async function setJobMode(id, mode) {
         const result = await response.json();
         if (!response.ok) throw new Error(result.message || "Could not change job mode");
         selectedJobId = id;
-        document.getElementById("jobMessage").textContent = mode === "FAILURE"
+        const message = document.getElementById("jobMessage");
+        if (message) message.textContent = mode === "FAILURE"
             ? "The next runs will fail and skip their heartbeats. DOWN follows the heartbeat deadline plus grace."
             : "The next run will write its report and send a heartbeat. A DOWN job will recover.";
         await loadDashboard();
     } catch (error) {
-        document.getElementById("jobMessage").textContent = error.message;
+        const message = document.getElementById("jobMessage");
+        if (message) message.textContent = error.message;
+        else console.error(error);
     }
 }
 
 async function loadJobDetails() {
-    if (!selectedJobId) return;
+    if (!selectedJobId || !document.getElementById("jobDetails")) return;
     const response = await fetch(`/api/checks/${selectedJobId}/job`);
     if (!response.ok) return;
     const job = await response.json();
